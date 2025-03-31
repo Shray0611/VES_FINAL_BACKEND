@@ -4,30 +4,58 @@ import { useNavigate } from "react-router-dom";
 const Auth = ({ isLogin }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState("student");
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsLoading(true);
+    setError("");
+  
     try {
       const endpoint = isLogin ? "/api/login" : "/api/register";
-      const body = isLogin ? { email, password } : { email, password };
-
+      const body = isLogin ? { email, password } : { email, password, role: "student" };
+  
       const response = await fetch(`http://localhost:5000${endpoint}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-
+  
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error);
-      localStorage.setItem("role", data.role);
-
+      console.log("Login Response:", data);
+  
+      if (!response.ok) {
+        throw new Error(data.message || data.error || "Authentication failed");
+      }
+  
+      const userRole = data.user?.role || data.role;
+      console.log("User Role:", userRole); 
+  
+      if (!userRole) {
+        throw new Error("No role found in response");
+      }
+  
       localStorage.setItem("token", data.token);
-      navigate(data.role === "admin" ? "/generate" : "/certificates");
+      localStorage.setItem("role", userRole); 
+  
+      switch(userRole.toLowerCase()) {
+        case "admin":
+          navigate("/generate");
+          break;
+        case "superadmin":
+          navigate("/superadmin/dashboard");
+          break;
+        default:
+          navigate("/certificates");
+      }
+  
     } catch (err) {
+      console.error("Login Error:", err);
       setError(err.message);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -49,7 +77,9 @@ const Auth = ({ isLogin }) => {
           placeholder="Password"
           required
         />
-        <button type="submit">{isLogin ? "Login" : "Register"}</button>
+        <button type="submit" disabled={isLoading}>
+          {isLoading ? "Processing..." : isLogin ? "Login" : "Register"}
+        </button>
         {error && <p className="error">{error}</p>}
       </form>
     </div>

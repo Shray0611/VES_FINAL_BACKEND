@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const connectDB = require('./config/db');
+const bcrypt = require('bcryptjs'); 
 const auth = require('./middlewares/auth');
 const authController = require('./controllers/authcontroller');
 const certificateController = require('./controllers/certificatecontroller');
@@ -43,6 +44,15 @@ app.get("/api/collections/:id", auth(["admin"]), collectionController.getCollect
 // User Routes
 app.get('/api/admin/users', auth(['admin']), userController.getAllUsers);
 app.put('/api/admin/users/:id/role', auth(['admin']), userController.updateUserRole);
+
+//superadmin routes
+app.post('/api/auth/login-superadmin', userController.loginSuperAdmin);
+app.post('/api/auth/create-superadmin', userController.createSuperAdmin);
+app.get('/api/auth/me', auth(['superadmin']), authController.getMe);
+
+//adding of the admins
+app.post('/api/admin/create', auth(['superadmin']), userController.createAdmin);
+app.get('/api/admin/list', auth(['superadmin']), userController.getAllAdmins);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
