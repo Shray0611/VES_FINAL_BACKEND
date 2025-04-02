@@ -5,6 +5,7 @@ const IssuerComplaints = () => {
   const [complaints, setComplaints] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [selectedComplaint, setSelectedComplaint] = useState(null);
 
   console.log("IssuerComplaints component is being rendered");
 
@@ -49,7 +50,13 @@ const IssuerComplaints = () => {
           throw new Error(data.error || "Failed to fetch complaints");
         }
 
-        setComplaints(data);
+        // Add a complaint ID to each complaint
+        const complaintsWithId = data.map((complaint, index) => ({
+          ...complaint,
+          complaintId: `#COMP-${789 + index}`,
+        }));
+
+        setComplaints(complaintsWithId);
       } catch (err) {
         console.error("Error fetching complaints:", err);
         setError(err.message || "An error occurred while fetching complaints");
@@ -60,6 +67,21 @@ const IssuerComplaints = () => {
 
     fetchComplaints();
   }, []);
+
+  const handleViewReport = (complaint) => {
+    setSelectedComplaint(complaint);
+  };
+
+  const closeReport = () => {
+    setSelectedComplaint(null);
+  };
+
+  // Format date to display in the table
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    const options = { year: "numeric", month: "short", day: "numeric" };
+    return date.toLocaleDateString("en-US", options);
+  };
 
   // Helper function to safely access nested properties
   const getStudentName = (complaint) => {
@@ -94,28 +116,100 @@ const IssuerComplaints = () => {
         <p className="no-data">No complaints have been received yet.</p>
       )}
 
-      <div className="complaints-list">
-        {complaints.map((complaint) => (
-          <div key={complaint._id} className="complaint-item">
-            <div className="complaint-header">
-              <span className={`status ${complaint.status}`}>
-                {complaint.status}
-              </span>
-              <span className="date">
-                {new Date(complaint.createdAt).toLocaleDateString()}
-              </span>
+      {!loading && !error && complaints.length > 0 && (
+        <div className="complaints-table-container">
+          <table className="complaints-table">
+            <thead>
+              <tr>
+                <th>Sr.No</th>
+                <th>Complaint ID</th>
+                <th>Email ID</th>
+                <th>Date</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {complaints.map((complaint, index) => (
+                <tr key={complaint._id}>
+                  <td>{index + 1}</td>
+                  <td>{complaint.complaintId}</td>
+                  <td>{complaint.userId?.email || "Unknown"}</td>
+                  <td>{formatDate(complaint.createdAt)}</td>
+                  <td>
+                    <button
+                      className="view-report-btn"
+                      onClick={() => handleViewReport(complaint)}
+                    >
+                      View Report
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {selectedComplaint && (
+        <div className="complaint-modal-overlay">
+          <div className="complaint-report-modal">
+            <div className="modal-header">
+              <h3>Complaint Report - {selectedComplaint.complaintId}</h3>
+              <button className="close-btn" onClick={closeReport}>
+                &times;
+              </button>
             </div>
-            <p className="user-email">
-              From: {complaint.userId?.email || "Unknown User"}
-            </p>
-            <p className="message">{complaint.message}</p>
-            <div className="certificate-info">
-              <p>Certificate ID: {complaint.certificateId?._id || "N/A"}</p>
-              <p>Student Name: {getStudentName(complaint)}</p>
+            <div className="modal-body">
+              <div className="report-section">
+                <h4>Complaint Details</h4>
+                <div className="report-field">
+                  <span className="field-label">Status:</span>
+                  <span className={`status ${selectedComplaint.status}`}>
+                    {selectedComplaint.status}
+                  </span>
+                </div>
+                <div className="report-field">
+                  <span className="field-label">Date Submitted:</span>
+                  <span>{formatDate(selectedComplaint.createdAt)}</span>
+                </div>
+                <div className="report-field">
+                  <span className="field-label">Reported By:</span>
+                  <span>
+                    {selectedComplaint.userId?.email || "Unknown User"}
+                  </span>
+                </div>
+              </div>
+
+              <div className="report-section">
+                <h4>Message</h4>
+                <p className="complaint-message">{selectedComplaint.message}</p>
+              </div>
+
+              <div className="report-section">
+                <h4>Certificate Information</h4>
+                <div className="report-field">
+                  <span className="field-label">Certificate ID:</span>
+                  <span>{selectedComplaint.certificateId?._id || "N/A"}</span>
+                </div>
+                <div className="report-field">
+                  <span className="field-label">Student Name:</span>
+                  <span>{getStudentName(selectedComplaint)}</span>
+                </div>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="status-btn" disabled>
+                {selectedComplaint.status === "open"
+                  ? "Mark as Resolved"
+                  : "Reopen"}
+              </button>
+              <button className="cancel-btn" onClick={closeReport}>
+                Close
+              </button>
             </div>
           </div>
-        ))}
-      </div>
+        </div>
+      )}
     </div>
   );
 };
