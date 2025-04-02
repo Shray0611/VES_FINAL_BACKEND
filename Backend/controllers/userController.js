@@ -19,10 +19,11 @@ exports.createSuperAdmin = async (req, res) => {
       message: 'Only one SuperAdmin allowed.',
     });
   }
+  const hashedPassword = await bcrypt.hash(password, 10);
 
   const superAdmin = await User.create({
     email,
-    password,
+    password:hashedPassword,
     role: 'superadmin',
   });
 
