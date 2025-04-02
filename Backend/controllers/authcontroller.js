@@ -1,27 +1,41 @@
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const User = require('../models/User');
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+const User = require("../models/User");
 
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
+
+    console.log(`Login attempt for email: ${email}`);
+
+    // Find the user by email
     const user = await User.findOne({ email });
 
-    if (
-      !user ||
-      !(await bcrypt.compare(password, user.password)) ||
-      !['superadmin', 'admin'].includes(user.role)
-    ) {
+    // If no user with this email exists
+    if (!user) {
+      console.log(`Login failed: No user found with email ${email}`);
       return res.status(401).json({
         success: false,
-        message: 'Invalid credentials or insufficient privileges',
+        message: "Invalid credentials",
       });
     }
 
+    // Verify password
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      console.log(`Login failed: Invalid password for ${email}`);
+      return res.status(401).json({
+        success: false,
+        message: "Invalid credentials",
+      });
+    }
+
+    // Login successful, generate token
+    console.log(`Login successful for ${email} with role: ${user.role}`);
     const token = jwt.sign(
       { id: user._id, role: user.role },
       process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRE || '30d' }
+      { expiresIn: process.env.JWT_EXPIRE || "30d" }
     );
 
     res.status(200).json({
@@ -34,9 +48,10 @@ exports.login = async (req, res) => {
       },
     });
   } catch (error) {
+    console.error("Login error:", error);
     res.status(500).json({
       success: false,
-      message: 'Server Error',
+      message: "Server Error",
       error: error.message,
     });
   }
@@ -48,11 +63,11 @@ exports.register = async (req, res) => {
     const emailRegex = /^[a-zA-Z0-9._-]+@ves\.ac\.in$/;
 
     if (!emailRegex.test(email)) {
-      throw new Error('Email must be in the ves.ac.in domain');
+      throw new Error("Email must be in the ves.ac.in domain");
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const user = new User({ email, password: hashedPassword, role: 'student' });
+    const user = new User({ email, password: hashedPassword, role: "student" });
     await user.save();
 
     const token = jwt.sign(
@@ -80,7 +95,7 @@ exports.getMe = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'Server Error',
+      message: "Server Error",
     });
   }
 };

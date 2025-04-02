@@ -1,39 +1,40 @@
-const { createCanvas, loadImage } = require('canvas');
-const uuid = require('uuid');
-const qr = require('qr-image');
-const Certificate = require('../models/Certificate');
-const Template = require('../models/Template');
-const Collection = require('../models/Collection');
+const { createCanvas, loadImage } = require("canvas");
+const uuid = require("uuid");
+const qr = require("qr-image");
+const Certificate = require("../models/Certificate");
+const Template = require("../models/Template");
+const Collection = require("../models/Collection");
+const Complaint = require("../models/Complaint");
 
 exports.generateCertificateImage = async (req, res) => {
   try {
     const certificate = await Certificate.findById(req.params.id)
-      .populate('templateId')
-      .populate('collectionId');
+      .populate("templateId")
+      .populate("collectionId");
 
     if (!certificate || certificate.email !== req.user.email) {
-      return res.status(404).json({ error: 'Certificate not found' });
+      return res.status(404).json({ error: "Certificate not found" });
     }
 
     const dataURL = certificate.templateId.image;
-    const base64Data = dataURL.replace(/^data:image\/\w+;base64,/, '');
-    const buffer = Buffer.from(base64Data, 'base64');
+    const base64Data = dataURL.replace(/^data:image\/\w+;base64,/, "");
+    const buffer = Buffer.from(base64Data, "base64");
     const image = await loadImage(buffer);
     const canvas = createCanvas(image.width, image.height);
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext("2d");
     ctx.drawImage(image, 0, 0);
-    ctx.textBaseline = 'top';
+    ctx.textBaseline = "top";
 
     for (const varConfig of certificate.templateId.variables) {
-      if (varConfig.type === 'text') {
+      if (varConfig.type === "text") {
         const posX = (varConfig.x / 100) * canvas.width;
         const posY = (varConfig.y / 100) * canvas.height;
         ctx.font = `${varConfig.fontSize}px ${varConfig.fontFamily}`;
         ctx.fillStyle = varConfig.color;
-        ctx.fillText(certificate.studentData[varConfig.name] || '', posX, posY);
-      } else if (varConfig.type === 'qr') {
+        ctx.fillText(certificate.studentData[varConfig.name] || "", posX, posY);
+      } else if (varConfig.type === "qr") {
         const qrUrl = `${process.env.FRONTEND_VERIFY_URL}/${certificate.verificationCode}`;
-        const qrBuffer = qr.imageSync(qrUrl, { type: 'png' });
+        const qrBuffer = qr.imageSync(qrUrl, { type: "png" });
         const qrImage = await loadImage(qrBuffer);
         const posX = (varConfig.x / 100) * canvas.width;
         const posY = (varConfig.y / 100) * canvas.height;
@@ -42,7 +43,7 @@ exports.generateCertificateImage = async (req, res) => {
       }
     }
 
-    res.set('Content-Type', 'image/png');
+    res.set("Content-Type", "image/png");
     canvas.createPNGStream().pipe(res);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -51,20 +52,23 @@ exports.generateCertificateImage = async (req, res) => {
 
 exports.verifyCertificate = async (req, res) => {
   try {
-    const certificate = await Certificate.findOne({ verificationCode: req.params.code })
-      .populate('templateId')
-      .populate('collectionId');
-      
-    if (!certificate) return res.status(404).json({ error: 'Certificate not found' });
-    
+    const certificate = await Certificate.findOne({
+      verificationCode: req.params.code,
+    })
+      .populate("templateId")
+      .populate("collectionId");
+
+    if (!certificate)
+      return res.status(404).json({ error: "Certificate not found" });
+
     res.json({
       valid: true,
       certificate: {
         studentData: certificate.studentData,
         createdAt: certificate.createdAt,
         issuedBy: certificate.templateId.createdBy,
-        collection: certificate.collectionId?.name
-      }
+        collection: certificate.collectionId?.name,
+      },
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -84,12 +88,17 @@ exports.getUserCertificates = async (req, res) => {
 
 exports.updateCertificate = async (req, res) => {
   try {
-    const certificate = await Certificate.findById(req.params.id).populate('templateId');
-    
-    if (!certificate || certificate.templateId.createdBy.toString() !== req.user._id.toString()) {
-      return res.status(404).json({ error: 'Certificate not found' });
+    const certificate = await Certificate.findById(req.params.id).populate(
+      "templateId"
+    );
+
+    if (
+      !certificate ||
+      certificate.templateId.createdBy.toString() !== req.user._id.toString()
+    ) {
+      return res.status(404).json({ error: "Certificate not found" });
     }
-    
+
     certificate.studentData = { ...certificate.studentData, ...req.body };
     await certificate.save();
     res.json(certificate);
@@ -101,10 +110,92 @@ exports.updateCertificate = async (req, res) => {
 exports.getAdminCertificates = async (req, res) => {
   try {
     const certificates = await Certificate.find()
-      .populate({ path: 'templateId', match: { createdBy: req.user._id } })
-      .then(results => results.filter(c => c.templateId !== null));
+      .populate({ path: "templateId", match: { createdBy: req.user._id } })
+      .then((results) => results.filter((c) => c.templateId !== null));
     res.json(certificates);
   } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.createComplaint = async (req, res) => {
+  try {
+    const { certificateId, message } = req.body;
+
+    if (!certificateId || !message) {
+      return res
+        .status(400)
+        .json({ error: "Certificate ID and message are required" });
+    }
+
+    // Validate certificateId format
+    if (!certificateId.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ error: "Invalid certificate ID format" });
+    }
+
+    let certificate;
+    try {
+      certificate = await Certificate.findById(certificateId).populate(
+        "templateId"
+      );
+    } catch (err) {
+      console.error("Error finding certificate:", err);
+      return res
+        .status(500)
+        .json({ error: "Database error when finding certificate" });
+    }
+
+    if (!certificate) {
+      return res.status(404).json({ error: "Certificate not found" });
+    }
+
+    // Ensure templateId exists
+    if (!certificate.templateId) {
+      return res
+        .status(400)
+        .json({ error: "Certificate has no template information" });
+    }
+
+    // Check if the user is the owner of the certificate
+    if (certificate.email !== req.user.email) {
+      return res.status(403).json({
+        error: "You are not authorized to complain about this certificate",
+      });
+    }
+
+    const complaint = new Complaint({
+      certificateId,
+      userId: req.user._id,
+      issuerId: certificate.templateId.createdBy,
+      message,
+    });
+
+    await complaint.save();
+
+    res.status(201).json(complaint);
+  } catch (error) {
+    console.error("Complaint creation error:", error);
+    res.status(500).json({ error: error.message || "Internal server error" });
+  }
+};
+
+exports.getIssuerComplaints = async (req, res) => {
+  try {
+    console.log("Getting complaints for issuer with ID:", req.user._id);
+
+    const complaints = await Complaint.find({ issuerId: req.user._id })
+      .populate("userId", "email")
+      .populate({
+        path: "certificateId",
+        populate: { path: "templateId" },
+      })
+      .sort({ createdAt: -1 });
+
+    console.log("Found complaints:", complaints.length);
+
+    res.json(complaints);
+  } catch (error) {
+    console.error("Error getting issuer complaints:", error);
     res.status(500).json({ error: error.message });
   }
 };
