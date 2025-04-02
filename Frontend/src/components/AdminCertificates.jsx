@@ -123,10 +123,20 @@ const AdminCertificates = () => {
 
   return (
     <div className="admin-certificates">
-      <h2>Managed Certificates</h2>
-      <Link to="/generate" className="back-button">
-        Back to Generator
-      </Link>
+      <div className="admin-header">
+        <h2>Issued Certificates</h2>
+        <div className="admin-nav">
+          <Link to="/admin/certificates" className="btn active">
+            Certificates
+          </Link>
+          <Link to="/generate" className="btn">
+            Create Certificate
+          </Link>
+          <Link to="/issuer/complaints" className="btn">
+            View Complaints
+          </Link>
+        </div>
+      </div>
 
       {error && <p className="error">{error}</p>}
 

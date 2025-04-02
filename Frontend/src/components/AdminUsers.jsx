@@ -50,7 +50,23 @@ const AdminUsers = () => {
 
   return (
     <div className="admin-users">
-      <h2>User Management</h2>
+      <div className="admin-header">
+        <h2>User Management</h2>
+        <div className="admin-nav">
+          <Link to="/admin/certificates" className="btn">
+            Certificates
+          </Link>
+          <Link to="/generate" className="btn">
+            Create Certificate
+          </Link>
+          <Link to="/admin/users" className="btn active">
+            Manage Users
+          </Link>
+          <Link to="/issuer/complaints" className="btn">
+            View Complaints
+          </Link>
+        </div>
+      </div>
       {error && <p className="error">{error}</p>}
       <table>
         <thead>

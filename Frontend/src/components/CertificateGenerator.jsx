@@ -3,7 +3,7 @@ import { useDropzone } from "react-dropzone";
 import { read, utils } from "xlsx";
 import { saveAs } from "file-saver";
 import Draggable from "react-draggable";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import QRCode from "qrcode";
 
 const CertificateGenerator = () => {
@@ -13,7 +13,10 @@ const CertificateGenerator = () => {
   const [excelData, setExcelData] = useState([]);
   const [userInput, setUserInput] = useState({});
   const [previewCertificate, setPreviewCertificate] = useState(null);
-  const [imageDimensions, setImageDimensions] = useState({ width: 0, height: 0 });
+  const [imageDimensions, setImageDimensions] = useState({
+    width: 0,
+    height: 0,
+  });
   // State to control whether the QR field is added or not
   const [qrEnabled, setQrEnabled] = useState(false);
   const [qrConfig, setQrConfig] = useState({
@@ -63,7 +66,9 @@ const CertificateGenerator = () => {
   const { getRootProps: getExcelRootProps, getInputProps: getExcelInputProps } =
     useDropzone({
       accept: {
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"],
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [
+          ".xlsx",
+        ],
       },
       onDrop: async (files) => {
         const file = await files[0].arrayBuffer();
@@ -109,9 +114,7 @@ const CertificateGenerator = () => {
     const newX = (data.x / imageDimensions.width) * 100;
     const newY = (data.y / imageDimensions.height) * 100;
     setVariables((prev) =>
-      prev.map((v, i) =>
-        i === index ? { ...v, x: newX, y: newY } : v
-      )
+      prev.map((v, i) => (i === index ? { ...v, x: newX, y: newY } : v))
     );
   };
 
@@ -190,139 +193,268 @@ const CertificateGenerator = () => {
     if (qrEnabled) {
       config.qrConfig = qrConfig;
     }
-    const blob = new Blob([JSON.stringify(config)], { type: "application/json" });
+    const blob = new Blob([JSON.stringify(config)], {
+      type: "application/json",
+    });
     saveAs(blob, "certificate-config.json");
   };
 
   return (
-    <div className="container">
-      <div {...getTemplateRootProps()} className="dropzone">
-        <input {...getTemplateInputProps()} />
-        <p>Drag & drop certificate template, or click to select</p>
+    <div className="certificate-generator">
+      <div className="admin-header">
+        <h2>Certificate Generator</h2>
+        <div className="admin-nav">
+          <Link to="/admin/certificates" className="btn">
+            Certificates
+          </Link>
+          <Link to="/generate" className="btn active">
+            Create Certificate
+          </Link>
+          <Link to="/issuer/complaints" className="btn">
+            View Complaints
+          </Link>
+        </div>
       </div>
+      <div className="container">
+        <div {...getTemplateRootProps()} className="dropzone">
+          <input {...getTemplateInputProps()} />
+          <p>Drag & drop certificate template, or click to select</p>
+        </div>
 
-      {template && (
-        <div className="variable-section">
-          <div className="preview-container">
-            <img
-              ref={imgRef}
-              src={template}
-              alt="Template Preview"
-              style={{ maxWidth: "100%", position: "relative" }}
-            />
-            {variables.map((varConfig, index) => {
-              const xPixel = (varConfig.x / 100) * imageDimensions.width;
-              const yPixel = (varConfig.y / 100) * imageDimensions.height;
-              return varConfig.type === "text" ? (
-                <Draggable
-                  key={index}
-                  bounds="parent"
-                  onStop={(e, data) => handleDrag(index, data)}
-                  position={{ x: xPixel, y: yPixel }}
-                >
-                  <div
-                    style={{
-                      position: "absolute",
-                      left: 0,
-                      top: 0,
-                      border: "2px dashed #000",
-                      padding: "5px",
-                      backgroundColor: "rgba(255, 255, 255, 0.7)",
-                      cursor: "move",
-                      fontFamily: varConfig.fontFamily,
-                      fontSize: `${varConfig.fontSize}px`,
-                      color: varConfig.color,
-                    }}
-                  >
-                    {varConfig.name}
-                  </div>
-                </Draggable>
-              ) : (
-                <Draggable
-                  key={index}
-                  bounds="parent"
-                  onStop={(e, data) => handleDrag(index, data)}
-                  position={{ x: xPixel, y: yPixel }}
-                >
-                  <div
-                    style={{
-                      position: "absolute",
-                      left: 0,
-                      top: 0,
-                      border: "2px dashed #000",
-                      backgroundColor: "rgba(255, 255, 255, 0.7)",
-                      cursor: "move",
-                      width: `${
-                        (varConfig.size / 100) * imageDimensions.width
-                      }px`,
-                      height: `${
-                        (varConfig.size / 100) * imageDimensions.width
-                      }px`,
-                    }}
-                  >
-                    [QR Code]
-                  </div>
-                </Draggable>
-              );
-            })}
-            {qrEnabled && qrDataUrl && (
-              <Draggable
-                bounds="parent"
-                onStop={(e, data) => handleQrDrag(data)}
-                position={{
-                  x: (qrConfig.x / 100) * imageDimensions.width,
-                  y: (qrConfig.y / 100) * imageDimensions.height,
-                }}
-              >
-                <img
-                  src={qrDataUrl}
-                  alt="QR Code"
-                  style={{
-                    position: "absolute",
-                    left: 0,
-                    top: 0,
-                    width: qrConfig.width,
-                    height: qrConfig.height,
-                    cursor: "move",
-                  }}
-                />
-              </Draggable>
-            )}
-          </div>
-
-          <div className="variables-control">
-            <div className="variable-input">
-              <input
-                value={currentVar}
-                onChange={(e) => setCurrentVar(e.target.value)}
-                placeholder="New variable name"
+        {template && (
+          <div className="variable-section">
+            <div className="preview-container">
+              <img
+                ref={imgRef}
+                src={template}
+                alt="Template Preview"
+                style={{ maxWidth: "100%", position: "relative" }}
               />
-              <button onClick={addVariable}>Add Text Field</button>
-              <button onClick={addQRVariable} style={{ marginLeft: "10px" }}>
-                Add QR Code
-              </button>
+              {variables.map((varConfig, index) => {
+                const xPixel = (varConfig.x / 100) * imageDimensions.width;
+                const yPixel = (varConfig.y / 100) * imageDimensions.height;
+                return varConfig.type === "text" ? (
+                  <Draggable
+                    key={index}
+                    bounds="parent"
+                    onStop={(e, data) => handleDrag(index, data)}
+                    position={{ x: xPixel, y: yPixel }}
+                  >
+                    <div
+                      style={{
+                        position: "absolute",
+                        left: 0,
+                        top: 0,
+                        border: "2px dashed #000",
+                        padding: "5px",
+                        backgroundColor: "rgba(255, 255, 255, 0.7)",
+                        cursor: "move",
+                        fontFamily: varConfig.fontFamily,
+                        fontSize: `${varConfig.fontSize}px`,
+                        color: varConfig.color,
+                      }}
+                    >
+                      {varConfig.name}
+                    </div>
+                  </Draggable>
+                ) : (
+                  <Draggable
+                    key={index}
+                    bounds="parent"
+                    onStop={(e, data) => handleDrag(index, data)}
+                    position={{ x: xPixel, y: yPixel }}
+                  >
+                    <div
+                      style={{
+                        position: "absolute",
+                        left: 0,
+                        top: 0,
+                        border: "2px dashed #000",
+                        backgroundColor: "rgba(255, 255, 255, 0.7)",
+                        cursor: "move",
+                        width: `${
+                          (varConfig.size / 100) * imageDimensions.width
+                        }px`,
+                        height: `${
+                          (varConfig.size / 100) * imageDimensions.width
+                        }px`,
+                      }}
+                    >
+                      [QR Code]
+                    </div>
+                  </Draggable>
+                );
+              })}
+              {qrEnabled && qrDataUrl && (
+                <Draggable
+                  bounds="parent"
+                  onStop={(e, data) => handleQrDrag(data)}
+                  position={{
+                    x: (qrConfig.x / 100) * imageDimensions.width,
+                    y: (qrConfig.y / 100) * imageDimensions.height,
+                  }}
+                >
+                  <img
+                    src={qrDataUrl}
+                    alt="QR Code"
+                    style={{
+                      position: "absolute",
+                      left: 0,
+                      top: 0,
+                      width: qrConfig.width,
+                      height: qrConfig.height,
+                      cursor: "move",
+                    }}
+                  />
+                </Draggable>
+              )}
             </div>
 
-            {variables.map((varConfig, index) => (
-              <div key={index} className="variable-item">
-                <h4>
-                  {varConfig.type === "text" ? varConfig.name : "QR Code"}
-                  <button
-                    className="delete-btn"
-                    onClick={() => deleteVariable(index)}
-                  >
-                    ×
-                  </button>
-                </h4>
-                <div className="variable-properties">
-                  <div className="position-controls">
+            <div className="variables-control">
+              <div className="variable-input">
+                <input
+                  value={currentVar}
+                  onChange={(e) => setCurrentVar(e.target.value)}
+                  placeholder="New variable name"
+                />
+                <button onClick={addVariable}>Add Text Field</button>
+                <button onClick={addQRVariable} style={{ marginLeft: "10px" }}>
+                  Add QR Code
+                </button>
+              </div>
+
+              {variables.map((varConfig, index) => (
+                <div key={index} className="variable-item">
+                  <h4>
+                    {varConfig.type === "text" ? varConfig.name : "QR Code"}
+                    <button
+                      className="delete-btn"
+                      onClick={() => deleteVariable(index)}
+                    >
+                      ×
+                    </button>
+                  </h4>
+                  <div className="variable-properties">
+                    <div className="position-controls">
+                      <label>
+                        X (%):
+                        <input
+                          type="number"
+                          value={varConfig.x}
+                          onChange={(e) =>
+                            updateVariableProperty(index, "x", e.target.value)
+                          }
+                        />
+                      </label>
+                      <label>
+                        Y (%):
+                        <input
+                          type="number"
+                          value={varConfig.y}
+                          onChange={(e) =>
+                            updateVariableProperty(index, "y", e.target.value)
+                          }
+                        />
+                      </label>
+                    </div>
+                    {varConfig.type === "text" ? (
+                      <div className="font-controls">
+                        <label>
+                          Font:
+                          <select
+                            value={varConfig.fontFamily}
+                            onChange={(e) =>
+                              updateVariableProperty(
+                                index,
+                                "fontFamily",
+                                e.target.value
+                              )
+                            }
+                          >
+                            {fontOptions.map((font) => (
+                              <option key={font} value={font}>
+                                {font}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <label>
+                          Size:
+                          <input
+                            type="number"
+                            value={varConfig.fontSize}
+                            onChange={(e) =>
+                              updateVariableProperty(
+                                index,
+                                "fontSize",
+                                e.target.value
+                              )
+                            }
+                          />
+                        </label>
+                        <label>
+                          Color:
+                          <input
+                            type="color"
+                            value={varConfig.color}
+                            onChange={(e) =>
+                              updateVariableProperty(
+                                index,
+                                "color",
+                                e.target.value
+                              )
+                            }
+                          />
+                        </label>
+                      </div>
+                    ) : (
+                      <div className="qr-controls">
+                        <label>
+                          Size (% of width):
+                          <input
+                            type="number"
+                            value={varConfig.size}
+                            onChange={(e) =>
+                              updateVariableProperty(
+                                index,
+                                "size",
+                                e.target.value
+                              )
+                            }
+                          />
+                        </label>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+
+              {/* QR Code Field Section */}
+              {!qrEnabled && (
+                <button onClick={() => setQrEnabled(true)}>Add QR Code</button>
+              )}
+              {qrEnabled && (
+                <div className="qr-control">
+                  <h4>
+                    QR Code Placement
+                    <button
+                      onClick={() => setQrEnabled(false)}
+                      className="delete-btn"
+                    >
+                      ×
+                    </button>
+                  </h4>
+                  <div className="qr-properties">
                     <label>
                       X (%):
                       <input
                         type="number"
-                        value={varConfig.x}
+                        value={qrConfig.x}
                         onChange={(e) =>
-                          updateVariableProperty(index, "x", e.target.value)
+                          setQrConfig((prev) => ({
+                            ...prev,
+                            x: parseFloat(e.target.value),
+                          }))
                         }
                       />
                     </label>
@@ -330,189 +462,95 @@ const CertificateGenerator = () => {
                       Y (%):
                       <input
                         type="number"
-                        value={varConfig.y}
+                        value={qrConfig.y}
                         onChange={(e) =>
-                          updateVariableProperty(index, "y", e.target.value)
+                          setQrConfig((prev) => ({
+                            ...prev,
+                            y: parseFloat(e.target.value),
+                          }))
+                        }
+                      />
+                    </label>
+                    <label>
+                      Width (px):
+                      <input
+                        type="number"
+                        value={qrConfig.width}
+                        onChange={(e) =>
+                          setQrConfig((prev) => ({
+                            ...prev,
+                            width: parseInt(e.target.value),
+                          }))
+                        }
+                      />
+                    </label>
+                    <label>
+                      Height (px):
+                      <input
+                        type="number"
+                        value={qrConfig.height}
+                        onChange={(e) =>
+                          setQrConfig((prev) => ({
+                            ...prev,
+                            height: parseInt(e.target.value),
+                          }))
                         }
                       />
                     </label>
                   </div>
-                  {varConfig.type === "text" ? (
-                    <div className="font-controls">
-                      <label>
-                        Font:
-                        <select
-                          value={varConfig.fontFamily}
-                          onChange={(e) =>
-                            updateVariableProperty(
-                              index,
-                              "fontFamily",
-                              e.target.value
-                            )
-                          }
-                        >
-                          {fontOptions.map((font) => (
-                            <option key={font} value={font}>
-                              {font}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                      <label>
-                        Size:
-                        <input
-                          type="number"
-                          value={varConfig.fontSize}
-                          onChange={(e) =>
-                            updateVariableProperty(
-                              index,
-                              "fontSize",
-                              e.target.value
-                            )
-                          }
-                        />
-                      </label>
-                      <label>
-                        Color:
-                        <input
-                          type="color"
-                          value={varConfig.color}
-                          onChange={(e) =>
-                            updateVariableProperty(
-                              index,
-                              "color",
-                              e.target.value
-                            )
-                          }
-                        />
-                      </label>
-                    </div>
-                  ) : (
-                    <div className="qr-controls">
-                      <label>
-                        Size (% of width):
-                        <input
-                          type="number"
-                          value={varConfig.size}
-                          onChange={(e) =>
-                            updateVariableProperty(
-                              index,
-                              "size",
-                              e.target.value
-                            )
-                          }
-                        />
-                      </label>
-                    </div>
-                  )}
                 </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        <div className="user-input-section">
+          <h3>Enter Your Details</h3>
+          {variables
+            .filter((v) => v.type === "text")
+            .map((varConfig, index) => (
+              <div key={index} className="input-field">
+                <label>{varConfig.name}</label>
+                <input
+                  type="text"
+                  name={varConfig.name}
+                  value={userInput[varConfig.name] || ""}
+                  onChange={handleInputChange}
+                  placeholder={`Enter ${varConfig.name}`}
+                />
               </div>
             ))}
-
-            {/* QR Code Field Section */}
-            {!qrEnabled && (
-              <button onClick={() => setQrEnabled(true)}>Add QR Code</button>
-            )}
-            {qrEnabled && (
-              <div className="qr-control">
-                <h4>
-                  QR Code Placement
-                  <button onClick={() => setQrEnabled(false)} className="delete-btn">
-                    ×
-                  </button>
-                </h4>
-                <div className="qr-properties">
-                  <label>
-                    X (%):
-                    <input
-                      type="number"
-                      value={qrConfig.x}
-                      onChange={(e) =>
-                        setQrConfig((prev) => ({ ...prev, x: parseFloat(e.target.value) }))
-                      }
-                    />
-                  </label>
-                  <label>
-                    Y (%):
-                    <input
-                      type="number"
-                      value={qrConfig.y}
-                      onChange={(e) =>
-                        setQrConfig((prev) => ({ ...prev, y: parseFloat(e.target.value) }))
-                      }
-                    />
-                  </label>
-                  <label>
-                    Width (px):
-                    <input
-                      type="number"
-                      value={qrConfig.width}
-                      onChange={(e) =>
-                        setQrConfig((prev) => ({ ...prev, width: parseInt(e.target.value) }))
-                      }
-                    />
-                  </label>
-                  <label>
-                    Height (px):
-                    <input
-                      type="number"
-                      value={qrConfig.height}
-                      onChange={(e) =>
-                        setQrConfig((prev) => ({ ...prev, height: parseInt(e.target.value) }))
-                      }
-                    />
-                  </label>
-                </div>
-              </div>
-            )}
-          </div>
+          <button onClick={generatePreview}>Preview Certificate</button>
         </div>
-      )}
 
-      <div className="user-input-section">
-        <h3>Enter Your Details</h3>
-        {variables
-          .filter((v) => v.type === "text")
-          .map((varConfig, index) => (
-            <div key={index} className="input-field">
-              <label>{varConfig.name}</label>
-              <input
-                type="text"
-                name={varConfig.name}
-                value={userInput[varConfig.name] || ""}
-                onChange={handleInputChange}
-                placeholder={`Enter ${varConfig.name}`}
-              />
-            </div>
-          ))}
-        <button onClick={generatePreview}>Preview Certificate</button>
-      </div>
+        {previewCertificate && (
+          <div className="preview-certificate">
+            <h3>Your Certificate</h3>
+            <img src={previewCertificate} alt="Generated Certificate" />
+            <button
+              onClick={() => saveAs(previewCertificate, "certificate.png")}
+            >
+              Download Certificate
+            </button>
+          </div>
+        )}
 
-      {previewCertificate && (
-        <div className="preview-certificate">
-          <h3>Your Certificate</h3>
-          <img src={previewCertificate} alt="Generated Certificate" />
-          <button onClick={() => saveAs(previewCertificate, "certificate.png")}>
-            Download Certificate
+        <div {...getExcelRootProps()} className="dropzone">
+          <input {...getExcelInputProps()} />
+          <p>Drag & drop Excel file, or click to select</p>
+        </div>
+
+        <div className="actions">
+          <button onClick={exportConfig} disabled={!variables.length}>
+            Export Configuration
+          </button>
+          <button onClick={generateCertificates} disabled={!excelData.length}>
+            Generate Certificates
           </button>
         </div>
-      )}
-
-      <div {...getExcelRootProps()} className="dropzone">
-        <input {...getExcelInputProps()} />
-        <p>Drag & drop Excel file, or click to select</p>
-      </div>
-
-      <div className="actions">
-        <button onClick={exportConfig} disabled={!variables.length}>
-          Export Configuration
-        </button>
-        <button onClick={generateCertificates} disabled={!excelData.length}>
-          Generate Certificates
-        </button>
-      </div>
-      <div>
-        <a href="/admin/certificates">Generated Certificate Sets</a>
+        <div>
+          <a href="/admin/certificates">Generated Certificate Sets</a>
+        </div>
       </div>
     </div>
   );
